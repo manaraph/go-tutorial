@@ -14,8 +14,7 @@ func main() {
 	log.SetPrefix("greetings: ")
 	log.SetFlags(0)
 	// Get a greeting message and print it.
-	// message, err := greetings.Hello("Manaraph")
-	message, err := greetings.Hello("")
+	message, err := greetings.Hello("Manaraph")
 	// If an error was returned, print it to the console and
 	// exit the program.
 	if err != nil {
