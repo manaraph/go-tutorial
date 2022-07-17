@@ -58,7 +58,7 @@ func main() {
 	// Create a movie
 	router.HandleFunc("/movies", createMovie).Methods("POST")
 	// Update a movie by id
-	// router.HandleFunc("/movies/{movieid}", updateMovie).Methods("PUT")
+	router.HandleFunc("/movies/{movieid}", updateMovie).Methods("PUT")
 	// Delete a movie by id
 	router.HandleFunc("/movies/{movieid}", deleteMovie).Methods("DELETE")
 	// Delete all movies
@@ -71,6 +71,8 @@ func main() {
 
 // Function for handling errors
 func checkErr(err error) {
+	fmt.Println(err)
+
 	if err != nil {
 		panic(err)
 	}
@@ -90,6 +92,7 @@ func getMovies(w http.ResponseWriter, r *http.Request) {
 
 	// var response []JsonResponse
 	var movies []Movie
+	defer rows.Close()
 
 	// Foreach movie
 	for rows.Next() {
@@ -157,10 +160,10 @@ func createMovie(w http.ResponseWriter, r *http.Request) {
 	movieID := movie.MovieID
 	movieName := movie.MovieName
 
-	var response = JsonResponse{}
+	var response = OneDataJsonResponse{}
 
 	if movieID == "" || movieName == "" {
-		response = JsonResponse{Type: "error", Message: "You are missing movieid or moviename parameter"}
+		response = OneDataJsonResponse{Type: "error", Message: "You are missing movieid or moviename parameter"}
 	} else {
 		db := setupDB()
 
@@ -170,7 +173,44 @@ func createMovie(w http.ResponseWriter, r *http.Request) {
 
 		err := db.QueryRow("INSERT INTO movies(movieID, movieName) VALUES($1, $2) returning id;", movieID, movieName).Scan(&lastInsertId)
 		checkErr(err)
-		response = JsonResponse{Type: "success", Message: "The movie has been inserted successfully!"}
+
+		movie = Movie{MovieID: movieID, MovieName: movieName}
+
+		response = OneDataJsonResponse{Type: "success", Message: "The movie has been inserted successfully!", Data: movie}
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
+// Update a movie
+func updateMovie(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	params := mux.Vars(r)
+	movieId := params["movieid"]
+
+	var movie Movie
+	_ = json.NewDecoder(r.Body).Decode(&movie)
+	fmt.Println(movie.MovieID)
+
+	movieID := movie.MovieID
+	movieName := movie.MovieName
+
+	var response = OneDataJsonResponse{}
+
+	if movieID == "" || movieName == "" {
+		response = OneDataJsonResponse{Type: "error", Message: "You are missing movieid or moviename parameter"}
+	} else {
+		db := setupDB()
+
+		stmt, err := db.Prepare("UPDATE movies SET movieName = ? WHERE id = ?")
+		checkErr(err)
+
+		_, err = stmt.Exec(movieName, movieId)
+		checkErr(err)
+
+		movie = Movie{MovieID: movieID, MovieName: movieName}
+
+		response = OneDataJsonResponse{Type: "success", Message: "The movie has been updated successfully!", Data: movie}
 	}
 	json.NewEncoder(w).Encode(response)
 }
