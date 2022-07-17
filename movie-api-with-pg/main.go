@@ -38,6 +38,12 @@ type JsonResponse struct {
 	Message string  `json:"message"`
 }
 
+type OneDataJsonResponse struct {
+	Type    string `json:"type"`
+	Data    Movie  `json:"data"`
+	Message string `json:"message"`
+}
+
 // Main function
 func main() {
 	// Init the mux router
@@ -46,17 +52,17 @@ func main() {
 	// Route handles & endpoints
 
 	// Get all movies
-	router.HandleFunc("/movies/", getMovies).Methods("GET")
+	router.HandleFunc("/movies", getMovies).Methods("GET")
 	// Get movie by id
-	// router.HandleFunc("/movies/{movieid}", getMovie).Methods("GET")
+	router.HandleFunc("/movies/{movieid}", getMovie).Methods("GET")
 	// Create a movie
-	router.HandleFunc("/movies/", createMovie).Methods("POST")
+	router.HandleFunc("/movies", createMovie).Methods("POST")
 	// Update a movie by id
 	// router.HandleFunc("/movies/{movieid}", updateMovie).Methods("PUT")
 	// Delete a movie by id
 	router.HandleFunc("/movies/{movieid}", deleteMovie).Methods("DELETE")
 	// Delete all movies
-	router.HandleFunc("/movies/", deleteMovies).Methods("DELETE")
+	router.HandleFunc("/movies", deleteMovies).Methods("DELETE")
 
 	// serve the app
 	fmt.Println("Starting server on port 8000")
@@ -99,6 +105,44 @@ func getMovies(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var response = JsonResponse{Type: "success", Data: movies}
+	json.NewEncoder(w).Encode(response)
+}
+
+// Get a movie
+func getMovie(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	params := mux.Vars(r)
+
+	movieId := params["movieid"]
+
+	var response = OneDataJsonResponse{}
+	var movie Movie
+
+	if movieId == "" {
+		response = OneDataJsonResponse{Type: "error", Message: "You are missing movieID parameter."}
+	} else {
+		db := setupDB()
+		result, err := db.Query("SELECT * FROM movies where movieID = $1", movieId)
+		// check errors
+		checkErr(err)
+
+		defer result.Close()
+
+		for result.Next() {
+			var id int
+			var movieID string
+			var movieName string
+
+			err := result.Scan(&id, &movieID, &movieName)
+
+			checkErr(err)
+
+			movie = Movie{MovieID: movieID, MovieName: movieName}
+		}
+		response = OneDataJsonResponse{Type: "success", Message: "The movie has been inserted successfully!", Data: movie}
+
+	}
 	json.NewEncoder(w).Encode(response)
 }
 
