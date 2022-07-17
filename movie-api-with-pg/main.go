@@ -202,10 +202,7 @@ func updateMovie(w http.ResponseWriter, r *http.Request) {
 	} else {
 		db := setupDB()
 
-		stmt, err := db.Prepare("UPDATE movies SET movieName = ? WHERE id = ?")
-		checkErr(err)
-
-		_, err = stmt.Exec(movieName, movieId)
+		_, err := db.Exec("UPDATE movies SET movieID = $1, movieName = $2 WHERE movieID = $3", movieID, movieName, movieId)
 		checkErr(err)
 
 		movie = Movie{MovieID: movieID, MovieName: movieName}
